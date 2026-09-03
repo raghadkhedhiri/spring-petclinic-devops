@@ -7,6 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
+
   build-and-test:
     runs-on: ubuntu-latest
 
@@ -22,12 +23,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-
       - name: Build, test and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          POSTGRES_DB: petclinic
+          POSTGRES_USER: petclinic
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=raghadkhedhiri_spring-petclinic-devops
-
   sast-codeql:
     name: SAST - CodeQL
     runs-on: ubuntu-latest
@@ -56,3 +58,26 @@ jobs:
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
+
+
+  container-security:
+    name: Docker Build & Trivy Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t petclinic-app:ci .
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: 'v0.74.0'
+          image-ref: 'petclinic-app:ci'
+          format: 'table'
+          exit-code: '1'
+          severity: 'HIGH,CRITICAL'
+          vuln-type: 'os,library'
