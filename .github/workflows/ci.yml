@@ -23,13 +23,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-
       - name: Build, test and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          POSTGRES_DB: petclinic
+          POSTGRES_USER: petclinic
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=raghadkhedhiri_spring-petclinic-devops
-
-
   sast-codeql:
     name: SAST - CodeQL
     runs-on: ubuntu-latest
