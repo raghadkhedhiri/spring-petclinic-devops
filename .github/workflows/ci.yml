@@ -59,12 +59,14 @@ jobs:
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
 
-
   container-security:
     name: Docker Build & Trivy Scan
     runs-on: ubuntu-latest
     needs: build-and-test
 
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,3 +83,18 @@ jobs:
           exit-code: '1'
           severity: 'HIGH,CRITICAL'
           vuln-type: 'os,library'
+
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push Docker image to GHCR
+        if: github.event_name == 'push'
+        run: |
+          docker tag petclinic-app:ci ghcr.io/${{ github.repository_owner }}/petclinic-app:${{ github.sha }}
+          docker tag petclinic-app:ci ghcr.io/${{ github.repository_owner }}/petclinic-app:latest
+          docker push ghcr.io/${{ github.repository_owner }}/petclinic-app:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/petclinic-app:latest
