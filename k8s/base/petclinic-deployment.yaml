@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic
+  namespace: petclinic
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: petclinic
+
+  template:
+    metadata:
+      labels:
+        app: petclinic
+
+    spec:
+      containers:
+        - name: petclinic
+          image: ghcr.io/raghadkhedhiri/petclinic-app:793d21f65748cd5e74ff7928e105f463d63016cd
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: petclinic-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            - name: POSTGRES_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: petclinic-config
+                  key: POSTGRES_URL
+
+            - name: SPRING_SQL_INIT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: petclinic-config
+                  key: SPRING_SQL_INIT_MODE
+
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+
+            - name: POSTGRES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: SPRING_APPLICATION_JSON
+              value: |
+                {
+                  "management.endpoint.health.probes.add-additional-paths": true
+                }
+
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
