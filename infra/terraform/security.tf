@@ -14,4 +14,16 @@ resource "azurerm_network_security_group" "main" {
     source_address_prefix      = var.admin_cidr
     destination_address_prefix = "*"
   }
+
+  security_rule {
+    name                       = "Allow-HTTP"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
 }

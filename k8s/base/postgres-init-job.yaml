@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-init
+  namespace: petclinic
+spec:
+  backoffLimit: 3
+
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: postgres-init
+          image: postgres:18.4
+
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: database
+
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+
+              psql -v ON_ERROR_STOP=1 -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /sql/schema.sql
+
+              if [ "$(psql -v ON_ERROR_STOP=1 -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc 'SELECT EXISTS (SELECT 1 FROM owners);')" = "f" ]; then
+                psql -v ON_ERROR_STOP=1 -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f /sql/data.sql
+              else
+                echo "Database already initialized - skipping seed data."
+              fi
+
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+              readOnly: true
+
+      volumes:
+        - name: sql
+          configMap:
+            name: petclinic-db-init
