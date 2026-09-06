@@ -1,0 +1,8 @@
+---
+- name: Configure Kubernetes server
+  hosts: k3s_server
+  become: true
+  gather_facts: true
+
+  roles:
+    - k3s

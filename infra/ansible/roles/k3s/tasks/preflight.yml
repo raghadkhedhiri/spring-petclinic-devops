@@ -1,0 +1,29 @@
+---
+- name: Verify supported operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["system"] == "Linux"
+      - ansible_facts["distribution"] == "Ubuntu"
+      - ansible_facts["architecture"] == "x86_64"
+      - ansible_facts["service_mgr"] == "systemd"
+    fail_msg: "The server must run Ubuntu Linux on x86_64 with systemd."
+    success_msg: "Operating system and architecture are supported."
+
+- name: Verify minimum memory
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["memtotal_mb"] >= 8000
+    fail_msg: "At least 8 GB of RAM is required for this project."
+    success_msg: "Memory requirement is satisfied."
+
+- name: Check free disk space
+  ansible.builtin.command: df -Pm /
+  register: root_disk
+  changed_when: false
+
+- name: Verify minimum free disk space
+  ansible.builtin.assert:
+    that:
+      - (root_disk.stdout_lines[-1].split()[3] | int) >= 20000
+    fail_msg: "At least 20 GB of free disk space is required."
+    success_msg: "Disk space requirement is satisfied."
