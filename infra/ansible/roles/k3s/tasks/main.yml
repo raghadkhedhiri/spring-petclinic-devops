@@ -1,0 +1,15 @@
+---
+- name: Run K3s preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags:
+    - preflight
+
+- name: Install and configure K3s
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - install
+
+- name: Verify K3s installation
+  ansible.builtin.import_tasks: verify.yml
+  tags:
+    - verify
