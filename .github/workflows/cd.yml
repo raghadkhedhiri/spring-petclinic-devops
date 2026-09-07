@@ -1,0 +1,64 @@
+name: PetClinic CD
+
+on:
+  workflow_run:
+    workflows: ["PetClinic CI"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to Azure with OIDC
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy PetClinic to K3s
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/petclinic-app
+        run: |
+          IMAGE="${IMAGE_REPOSITORY}:${DEPLOY_SHA}"
+
+          cat > deploy.sh <<SCRIPT
+          set -euo pipefail
+
+          IMAGE="${IMAGE}"
+
+          sudo k3s kubectl -n petclinic set image \
+            deployment/petclinic \
+            petclinic="\${IMAGE}"
+
+          sudo k3s kubectl -n petclinic rollout status \
+            deployment/petclinic \
+            --timeout=300s
+           DEPLOYED_IMAGE="\$(sudo k3s kubectl -n petclinic get deployment petclinic \
+            -o jsonpath='{.spec.template.spec.containers[0].image}')"
+
+           test "\${DEPLOYED_IMAGE}" = "\${IMAGE}"
+
+          sudo k3s kubectl -n petclinic get pods -l app=petclinic
+
+          curl -fsS --retry 10 --retry-delay 5 http://127.0.0.1/ >/dev/null
+
+          echo "PETCLINIC_DEPLOYMENT_OK"
+          SCRIPT
+
+          az vm run-command invoke \
+            --resource-group petclinic-devops-rg \
+            --name petclinic-devops-vm \
+            --command-id RunShellScript \
+            --scripts @deploy.sh > run-command-result.json
+
+          cat run-command-result.json
+          grep -q "PETCLINIC_DEPLOYMENT_OK" run-command-result.json
