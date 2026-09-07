@@ -31,7 +31,7 @@ jobs:
           IMAGE="${IMAGE_REPOSITORY}:${DEPLOY_SHA}"
 
           cat > deploy.sh <<SCRIPT
-          set -euo pipefail
+          set -eu
 
           IMAGE="${IMAGE}"
 
