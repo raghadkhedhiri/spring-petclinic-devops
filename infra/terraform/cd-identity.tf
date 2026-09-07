@@ -21,7 +21,7 @@ resource "azurerm_role_definition" "github_cd_run_command" {
   permissions {
     actions = [
       "Microsoft.Compute/virtualMachines/read",
-      "Microsoft.Compute/virtualMachines/runCommands/write"
+      "Microsoft.Compute/virtualMachines/runCommand/action"
     ]
     not_actions = []
   }
