@@ -10,7 +10,7 @@ resource "azurerm_federated_identity_credential" "github_cd_main" {
 
   issuer   = "https://token.actions.githubusercontent.com"
   audience = ["api://AzureADTokenExchange"]
-  subject  = "repo:raghadkhedhiri/spring-petclinic-devops:ref:refs/heads/main"
+  subject  = "repo:raghadkhedhiri@123326129/spring-petclinic-devops@1349820324:ref:refs/heads/main"
 }
 
 resource "azurerm_role_definition" "github_cd_run_command" {
