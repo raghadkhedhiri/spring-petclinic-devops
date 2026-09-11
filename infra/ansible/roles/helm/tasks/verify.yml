@@ -1,0 +1,23 @@
+---
+- name: Get installed Helm version
+  ansible.builtin.command: "{{ helm_install_dir }}/helm version"
+  register: helm_version_output
+  changed_when: false
+
+- name: Verify installed Helm version
+  ansible.builtin.assert:
+    that:
+      - helm_version in helm_version_output.stdout
+    fail_msg: "Installed Helm version does not match {{ helm_version }}."
+    success_msg: "Helm {{ helm_version }} is installed correctly."
+
+- name: Verify Helm can access the K3s cluster
+  ansible.builtin.command: "{{ helm_install_dir }}/helm list --all-namespaces"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: helm_cluster_access
+  changed_when: false
+
+- name: Display Helm cluster access result
+  ansible.builtin.debug:
+    var: helm_cluster_access.stdout_lines

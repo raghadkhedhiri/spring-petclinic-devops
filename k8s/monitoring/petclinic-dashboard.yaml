@@ -1,0 +1,292 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: petclinic-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: petclinic
+    monitoring: enabled
+data:
+  petclinic-overview.json: |-
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "text": "DOWN"
+                    },
+                    "1": {
+                      "text": "UP"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "max(up{namespace=\"petclinic\", service=\"petclinic-metrics\"})",
+              "refId": "A"
+            }
+          ],
+          "title": "PetClinic Metrics Target",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_available{namespace=\"petclinic\", deployment=\"petclinic\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Available PetClinic Replicas",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 5
+          },
+          "id": 3,
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"petclinic\"}[5m]))",
+              "legendFormat": "requests / second",
+              "refId": "A"
+            }
+          ],
+          "title": "HTTP Request Rate",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 5
+          },
+          "id": 4,
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_sum{namespace=\"petclinic\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{namespace=\"petclinic\"}[5m])), 0.001)",
+              "legendFormat": "average latency",
+              "refId": "A"
+            }
+          ],
+          "title": "Average HTTP Latency",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 13
+          },
+          "id": 5,
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{namespace=\"petclinic\", area=\"heap\"})",
+              "legendFormat": "Heap used",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(jvm_memory_max_bytes{namespace=\"petclinic\", area=\"heap\"})",
+              "legendFormat": "Heap max",
+              "refId": "B"
+            }
+          ],
+          "title": "JVM Heap Memory",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "max": 100,
+              "min": 0,
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 13
+          },
+          "id": 6,
+          "targets": [
+            {
+              "expr": "avg(process_cpu_usage{namespace=\"petclinic\"}) * 100",
+              "legendFormat": "CPU",
+              "refId": "A"
+            }
+          ],
+          "title": "PetClinic Process CPU",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 21
+          },
+          "id": 7,
+          "targets": [
+            {
+              "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"petclinic\", container=\"petclinic\"})",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "PetClinic Container Restarts",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 41,
+      "tags": [
+        "petclinic",
+        "observability",
+        "prometheus"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timezone": "browser",
+      "title": "PetClinic Overview",
+      "uid": "petclinic-overview",
+      "version": 1
+    }
