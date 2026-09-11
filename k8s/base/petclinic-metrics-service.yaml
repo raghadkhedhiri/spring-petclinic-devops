@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: petclinic-metrics
+  namespace: petclinic
+  labels:
+    app: petclinic
+    monitoring: enabled
+spec:
+  type: ClusterIP
+  selector:
+    app: petclinic
+  ports:
+    - name: management
+      port: 9090
+      targetPort: management
