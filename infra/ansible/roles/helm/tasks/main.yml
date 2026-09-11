@@ -1,0 +1,15 @@
+---
+- name: Run Helm preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags:
+    - preflight
+
+- name: Install Helm
+  ansible.builtin.import_tasks: install.yml
+  tags:
+    - install
+
+- name: Verify Helm installation
+  ansible.builtin.import_tasks: verify.yml
+  tags:
+    - verify
