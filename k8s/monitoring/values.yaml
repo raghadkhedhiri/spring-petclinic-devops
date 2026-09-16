@@ -76,6 +76,11 @@ prometheus:
 grafana:
   enabled: true
 
+  admin:
+    existingSecret: petclinic-grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
   service:
     type: ClusterIP
 

@@ -1,0 +1,21 @@
+---
+- name: Deploy kube-prometheus-stack
+  kubernetes.core.helm:
+    release_name: "{{ monitoring_release_name }}"
+    release_namespace: "{{ monitoring_namespace }}"
+    release_state: present
+
+    chart_ref: "{{ monitoring_chart_name }}"
+    chart_repo_url: "{{ monitoring_chart_repo_url }}"
+    chart_version: "{{ monitoring_chart_version }}"
+
+    values_files:
+      - "{{ monitoring_values_remote_path }}"
+
+    binary_path: "{{ monitoring_helm_binary }}"
+    kubeconfig: "{{ monitoring_kubeconfig }}"
+
+    create_namespace: true
+    atomic: true
+    wait: true
+    timeout: 10m0s

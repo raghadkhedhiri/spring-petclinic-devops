@@ -1,0 +1,8 @@
+---
+- name: Copy kube-prometheus-stack values to the server
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../k8s/monitoring/values.yaml"
+    dest: "{{ monitoring_values_remote_path }}"
+    owner: root
+    group: root
+    mode: "0644"

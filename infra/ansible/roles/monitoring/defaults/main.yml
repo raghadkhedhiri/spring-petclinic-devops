@@ -1,0 +1,16 @@
+---
+monitoring_release_name: "petclinic-monitoring"
+monitoring_namespace: "monitoring"
+
+monitoring_chart_name: "kube-prometheus-stack"
+monitoring_chart_version: "89.2.4"
+monitoring_chart_repo_url: "https://prometheus-community.github.io/helm-charts"
+
+monitoring_helm_binary: "/usr/local/bin/helm"
+monitoring_kubeconfig: "/etc/rancher/k3s/k3s.yaml"
+
+monitoring_values_remote_path: "/tmp/petclinic-monitoring-values.yaml"
+
+monitoring_grafana_admin_secret: "petclinic-grafana-admin"
+monitoring_grafana_admin_user: "admin"
+monitoring_grafana_admin_password: "{{ lookup('ansible.builtin.env', 'GRAFANA_ADMIN_PASSWORD') | default('', true) }}"
