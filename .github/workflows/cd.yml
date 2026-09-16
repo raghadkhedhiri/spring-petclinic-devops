@@ -12,10 +12,16 @@ permissions:
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository }}
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout validated CI commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
       - name: Log in to Azure with OIDC
         uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
         with:
@@ -28,16 +34,28 @@ jobs:
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
           IMAGE_REPOSITORY: ghcr.io/${{ github.repository_owner }}/petclinic-app
         run: |
+          set -euo pipefail
+          IMAGE_REPOSITORY="${IMAGE_REPOSITORY,,}"
+
           IMAGE="${IMAGE_REPOSITORY}:${DEPLOY_SHA}"
+
+          bash scripts/package-cd-manifests.sh "$IMAGE" petclinic-manifests.tar.gz
+          BUNDLE_BASE64="$(base64 -w0 petclinic-manifests.tar.gz)"
 
           cat > deploy.sh <<SCRIPT
           set -eu
 
           IMAGE="${IMAGE}"
 
-          sudo k3s kubectl -n petclinic set image \
-            deployment/petclinic \
-            petclinic="\${IMAGE}"
+          DEPLOY_DIR="\$(mktemp -d)"
+          trap 'rm -rf "\${DEPLOY_DIR}"' EXIT
+
+          printf '%s' '${BUNDLE_BASE64}' | base64 -d > "\${DEPLOY_DIR}/bundle.tar.gz"
+          tar -xzf "\${DEPLOY_DIR}/bundle.tar.gz" -C "\${DEPLOY_DIR}"
+
+          sudo k3s kubectl apply -f "\${DEPLOY_DIR}/manifests/namespace.yaml"
+          sudo k3s kubectl apply -f "\${DEPLOY_DIR}/manifests"
+
 
           sudo k3s kubectl -n petclinic rollout status \
             deployment/petclinic \

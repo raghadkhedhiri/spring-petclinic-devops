@@ -1,0 +1,9 @@
+---
+- name: Ensure monitoring prerequisites
+  ansible.builtin.import_tasks: secret.yml
+
+- name: Copy monitoring values
+  ansible.builtin.import_tasks: copy-values.yml
+
+- name: Deploy monitoring stack
+  ansible.builtin.import_tasks: deploy.yml

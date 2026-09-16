@@ -6,6 +6,11 @@
 
   roles:
     - k3s
+
     - role: helm
       tags:
         - helm
+
+    - role: monitoring
+      tags:
+        - monitoring
