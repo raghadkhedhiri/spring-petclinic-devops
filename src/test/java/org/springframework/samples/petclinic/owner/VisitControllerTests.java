@@ -16,6 +16,11 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+
+import org.springframework.context.annotation.Import;
+import org.springframework.samples.petclinic.SecurityConfig;
+
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +46,7 @@ import java.util.Optional;
  * @author Colin But
  * @author Wick Dynex
  */
+@Import(SecurityConfig.class)
 @WebMvcTest(VisitController.class)
 @DisabledInNativeImage
 @DisabledInAotMode
@@ -75,7 +81,7 @@ class VisitControllerTests {
 	@Test
 	void processNewVisitFormSuccess() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 				.param("name", "George")
 				.param("date", LocalDate.now().plusDays(1).toString())
 				.param("description", "Visit Description"))
@@ -86,8 +92,8 @@ class VisitControllerTests {
 	@Test
 	void processNewVisitFormHasErrors() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).param("name",
-					"George"))
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
+				.param("name", "George"))
 			.andExpect(model().attributeHasErrors("visit"))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdateVisitForm"));
@@ -96,7 +102,7 @@ class VisitControllerTests {
 	@Test
 	void processNewVisitFormHasErrorsWhenVisitDateIsNotInFuture() throws Exception {
 		mockMvc
-			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID).with(csrf())
 				.param("name", "George")
 				.param("date", LocalDate.now().toString())
 				.param("description", "Visit Description"))
