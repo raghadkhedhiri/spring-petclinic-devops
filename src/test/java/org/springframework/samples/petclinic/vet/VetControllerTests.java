@@ -16,6 +16,9 @@
 
 package org.springframework.samples.petclinic.vet;
 
+import org.springframework.context.annotation.Import;
+import org.springframework.samples.petclinic.SecurityConfig;
+
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Test class for the {@link VetController}
  */
 
+@Import(SecurityConfig.class)
 @WebMvcTest(VetController.class)
 @DisabledInNativeImage
 @DisabledInAotMode

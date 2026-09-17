@@ -33,6 +33,8 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.context.annotation.Import;
+import org.springframework.samples.petclinic.SecurityConfig;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -92,6 +94,7 @@ class CrashControllerIntegrationTests {
 				"This application has no explicit mapping for");
 	}
 
+	@Import(SecurityConfig.class)
 	@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class,
 			DataSourceTransactionManagerAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
 	static class TestConfiguration {

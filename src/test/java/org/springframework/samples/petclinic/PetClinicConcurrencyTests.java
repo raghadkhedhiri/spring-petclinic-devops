@@ -63,15 +63,28 @@ public class PetClinicConcurrencyTests {
 
 		for (int i = 0; i < threadCount; i++) {
 			executorService.submit(() -> {
-				readyLatch.countDown();
 				try {
+					ResponseEntity<String> form = template.getForEntity("/owners/" + ownerId + "/pets/new",
+							String.class);
+					var csrfMatcher = java.util.regex.Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"")
+						.matcher(form.getBody());
+					if (!csrfMatcher.find()) {
+						throw new IllegalStateException("CSRF token missing from form");
+					}
+					String sessionCookie = form.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+					if (sessionCookie == null) {
+						throw new IllegalStateException("Session cookie missing from form response");
+					}
+					readyLatch.countDown();
 					startLatch.await(); // Wait to start simultaneously
 
 					HttpHeaders headers = new HttpHeaders();
 					headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+					headers.set(HttpHeaders.COOKIE, sessionCookie.split(";", 2)[0]);
 
 					MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
 					map.add("name", duplicatePetName);
+					map.add("_csrf", csrfMatcher.group(1));
 					map.add("birthDate", "2020-01-01");
 					map.add("type", "cat");
 
