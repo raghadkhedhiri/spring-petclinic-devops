@@ -3,6 +3,10 @@ kind: Service
 metadata:
   name: petclinic
   namespace: petclinic
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: "lax"
 spec:
   type: ClusterIP
   selector:
