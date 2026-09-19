@@ -74,6 +74,9 @@ prometheus:
               storage: 10Gi
 
 grafana:
+  grafana.ini:
+    plugins:
+      preinstall_auto_update: false
   enabled: true
 
   admin:
