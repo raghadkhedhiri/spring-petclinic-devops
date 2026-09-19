@@ -1,7 +1,14 @@
 ---
-- name: Copy Alertmanager email configuration to server
+- name: Require Gmail alert address
+  ansible.builtin.assert:
+    that:
+      - lookup('ansible.builtin.env', 'PETCLINIC_ALERT_EMAIL') | length > 0
+    fail_msg: "Set PETCLINIC_ALERT_EMAIL before enabling Gmail alerts."
+  no_log: true
+
+- name: Generate Alertmanager email configuration on server
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../k8s/monitoring/petclinic-alertmanagerconfig.yaml"
+    content: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../k8s/monitoring/petclinic-alertmanagerconfig.yaml.tpl') | replace('REPLACE_WITH_GMAIL_ADDRESS', lookup('ansible.builtin.env', 'PETCLINIC_ALERT_EMAIL')) }}"
     dest: /tmp/petclinic-alertmanagerconfig.yaml
     owner: root
     group: root
