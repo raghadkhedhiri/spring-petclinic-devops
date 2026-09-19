@@ -110,6 +110,13 @@ alertmanager:
     type: ClusterIP
 
   alertmanagerSpec:
+    alertmanagerConfigSelector:
+      matchLabels:
+        alertmanager: petclinic-email
+
+    alertmanagerConfigNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: petclinic
     resources:
       requests:
         cpu: 50m
