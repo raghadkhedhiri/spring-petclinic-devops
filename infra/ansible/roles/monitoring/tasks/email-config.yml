@@ -6,16 +6,7 @@
     fail_msg: "Set PETCLINIC_ALERT_EMAIL before enabling Gmail alerts."
   no_log: true
 
-- name: Generate Alertmanager email configuration on server
-  ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../k8s/monitoring/petclinic-alertmanagerconfig.yaml.tpl') | replace('REPLACE_WITH_GMAIL_ADDRESS', lookup('ansible.builtin.env', 'PETCLINIC_ALERT_EMAIL')) }}"
-    dest: /tmp/petclinic-alertmanagerconfig.yaml
-    owner: root
-    group: root
-    mode: "0600"
-  no_log: true
-
-- name: Apply PetClinic AlertmanagerConfig
+- name: Apply PetClinic AlertmanagerConfig securely
   ansible.builtin.command:
     argv:
       - /usr/local/bin/k3s
@@ -24,6 +15,9 @@
       - petclinic
       - apply
       - -f
-      - /tmp/petclinic-alertmanagerconfig.yaml
+      - "-"
+    stdin: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../../k8s/monitoring/petclinic-alertmanagerconfig.yaml.tpl') | replace('REPLACE_WITH_GMAIL_ADDRESS', lookup('ansible.builtin.env', 'PETCLINIC_ALERT_EMAIL')) }}"
+    stdin_add_newline: false
   register: email_config_apply
   changed_when: "'created' in email_config_apply.stdout or 'configured' in email_config_apply.stdout"
+  no_log: true
