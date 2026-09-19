@@ -66,3 +66,6 @@ override.tf.json
 terraform.rc
 
 tfplan
+
+# Locally generated Alertmanager configuration
+/k8s/monitoring/petclinic-alertmanagerconfig.yaml
