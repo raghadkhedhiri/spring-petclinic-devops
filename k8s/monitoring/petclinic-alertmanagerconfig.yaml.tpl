@@ -8,6 +8,10 @@ metadata:
 spec:
   route:
     receiver: petclinic-gmail
+    matchers:
+      - name: severity
+        matchType: =~
+        value: "warning|critical"
     groupBy:
       - alertname
     groupWait: 30s
