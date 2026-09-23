@@ -7,3 +7,11 @@
 
 - name: Deploy monitoring stack
   ansible.builtin.import_tasks: deploy.yml
+
+- name: Create Gmail SMTP Secret when email alerts are enabled
+  ansible.builtin.import_tasks: email-secret.yml
+  when: monitoring_email_alerts_enabled | default(false) | bool
+
+- name: Configure Gmail notifications when enabled
+  ansible.builtin.import_tasks: email-config.yml
+  when: monitoring_email_alerts_enabled | default(false) | bool

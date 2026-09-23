@@ -74,6 +74,9 @@ prometheus:
               storage: 10Gi
 
 grafana:
+  grafana.ini:
+    plugins:
+      preinstall_auto_update: false
   enabled: true
 
   admin:
@@ -110,6 +113,13 @@ alertmanager:
     type: ClusterIP
 
   alertmanagerSpec:
+    alertmanagerConfigSelector:
+      matchLabels:
+        alertmanager: petclinic-email
+
+    alertmanagerConfigNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: petclinic
     resources:
       requests:
         cpu: 50m
