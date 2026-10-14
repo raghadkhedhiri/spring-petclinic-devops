@@ -1,1922 +1,938 @@
-# Spring PetClinic DevSecOps on Microsoft Azure
+# Spring PetClinic — DevSecOps on Microsoft Azure
 
-[![PetClinic CI](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/ci.yml/badge.svg)](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/ci.yml)
-[![PetClinic CD](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/cd.yml/badge.svg)](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/cd.yml)
-[![PetClinic DAST](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/dast.yml/badge.svg)](https://github.com/raghadkhedhiri/spring-petclinic-devops/actions/workflows/dast.yml)
+DevSecOps and Cloud project based on the Spring PetClinic application.
 
-A complete DevSecOps implementation around the Spring PetClinic application, covering continuous integration, software quality, security testing, containerization, Infrastructure as Code, Kubernetes deployment, continuous delivery, monitoring and alerting on Microsoft Azure.
+The objective of this project is to build a complete, reproducible and secure delivery chain around an existing Spring Boot application, from source-code validation to deployment, monitoring and alerting on Microsoft Azure.
 
-This repository is based on the official [Spring PetClinic](https://github.com/spring-projects/spring-petclinic) application. The main objective of this project is not to redesign the PetClinic business application, but to build a secure, automated and reproducible Cloud/DevSecOps delivery platform around it.
+The project was developed incrementally using Git branches and Pull Requests.
 
 ---
 
-## Project Context
+## Project Overview
 
-This project was developed as part of an engineering internship at **ESPRIT**.
+Spring PetClinic is used as the application workload so that the project can focus on DevOps, Cloud and security practices rather than on the development of a new business application.
 
-**Engineering field:** Software Architecture Engineering (SAE)  
-**Internship period:** 09 July 2026 – 10 September 2026  
-**Host organization:** ESPRIT  
-**Author:** Raghad Khedhiri
+The initial application used the embedded H2 database for local validation.  
+The target architecture uses PostgreSQL as an external persistent database and deploys the application on a K3s Kubernetes cluster hosted on Microsoft Azure.
 
-The core DevOps and Cloud platform was developed progressively during the internship. Monitoring, alerting and final hardening were completed as a technical continuation of the project.
-
----
-
-## Project Objectives
-
-The project addresses the following question:
-
-> How can the build, validation, security, deployment and monitoring lifecycle of a Spring Boot application be automated in a secure and reproducible Cloud environment?
-
-The implementation covers:
+The complete project covers:
 
 - Continuous Integration with GitHub Actions
-- Automated Maven build and tests
+- Maven build and automated tests
 - SonarQube Cloud quality analysis
-- CodeQL static application security testing
+- CodeQL static security analysis
 - JaCoCo test coverage enforcement
-- Docker containerization
+- Docker multi-stage containerization
 - Trivy container vulnerability scanning
-- GitHub Container Registry image publishing
-- Azure infrastructure provisioning with Terraform
-- K3s installation and configuration with Ansible
-- Kubernetes application and database deployment
+- GitHub Container Registry
+- Microsoft Azure infrastructure
+- Terraform Infrastructure as Code
+- Ansible server configuration
+- K3s Kubernetes
+- PostgreSQL persistent storage
+- Kubernetes Deployments, Services and Ingress
 - Secure Continuous Deployment using Azure OIDC
-- Least-privilege Azure RBAC
-- OWASP ZAP dynamic application security testing
-- Prometheus metrics collection
+- Azure RBAC with least-privilege permissions
+- OWASP ZAP dynamic security testing
+- Spring Boot Actuator and Micrometer
+- Prometheus monitoring
 - Grafana dashboards
-- Alertmanager incident routing
+- Alertmanager
 - Gmail incident notifications
 
 ---
 
-# Architecture
+## Global Architecture
 
-```mermaid
-flowchart TD
+```text
+Developer
+   |
+   v
+Git / GitHub
+   |
+   v
+Pull Request
+   |
+   v
+GitHub Actions CI
+   |
+   +--> Maven build and tests
+   +--> JaCoCo coverage
+   +--> SonarQube
+   +--> CodeQL SAST
+   +--> Docker build
+   +--> Trivy image scan
+   |
+   v
+GitHub Container Registry
+   |
+   v
+GitHub Actions CD
+   |
+   +--> Azure OIDC authentication
+   +--> Azure RBAC
+   +--> Azure Run Command
+   |
+   v
+Microsoft Azure VM
+   |
+   v
+K3s Kubernetes
+   |
+   +--> Traefik Ingress
+   |
+   +--> PetClinic Deployment
+   |       +--> Replica 1
+   |       +--> Replica 2
+   |
+   +--> PostgreSQL StatefulSet
+           |
+           +--> PersistentVolumeClaim
 
-    DEV[Developer] --> GIT[Git / GitHub]
-    GIT --> PR[Pull Request]
+Monitoring:
+PetClinic
+   |
+   v
+Spring Boot Actuator / Micrometer
+   |
+   v
+Prometheus
+   |
+   +--> Grafana
+   |
+   v
+Alertmanager
+   |
+   v
+Gmail notifications
 
-    PR --> CI[GitHub Actions - CI]
-
-    CI --> TESTS[Maven Build & Tests]
-    CI --> SONAR[SonarQube Cloud]
-    CI --> CODEQL[CodeQL SAST]
-    CI --> JACOCO[JaCoCo Coverage]
-    CI --> DOCKER[Docker Build]
-
-    DOCKER --> TRIVY[Trivy Scan]
-    TRIVY --> GHCR[GitHub Container Registry]
-
-    GHCR --> CD[GitHub Actions - CD]
-
-    CD --> OIDC[Azure OIDC Authentication]
-    OIDC --> RBAC[Least-Privilege Azure RBAC]
-    RBAC --> RUNCOMMAND[Azure VM Run Command]
-
-    RUNCOMMAND --> K3S[K3s / Kubernetes]
-
-    K3S --> TRAEFIK[Traefik Ingress]
-    TRAEFIK --> APP1[PetClinic Pod 1]
-    TRAEFIK --> APP2[PetClinic Pod 2]
-
-    APP1 --> POSTGRES[(PostgreSQL)]
-    APP2 --> POSTGRES
-
-    POSTGRES --> PVC[(Persistent Volume)]
-
-    CD --> DAST[OWASP ZAP DAST]
-
-    APP1 --> METRICS[Actuator / Micrometer]
-    APP2 --> METRICS
-
-    METRICS --> PROM[Prometheus]
-    PROM --> GRAFANA[Grafana]
-    PROM --> ALERTS[Prometheus Rules]
-    ALERTS --> ALERTMANAGER[Alertmanager]
-    ALERTMANAGER --> GMAIL[Gmail Notifications]
+Security after deployment:
+PetClinic public endpoint
+   |
+   v
+OWASP ZAP Baseline Scan
 ```
 
 ---
 
-# Technology Stack
+## Technology Stack
 
-| Area | Technology |
-|---|---|
-| Application | Spring Boot |
-| Language target | Java 17 |
-| CI build JDK | Eclipse Temurin JDK 21 |
-| Build | Maven Wrapper |
-| Database | PostgreSQL 18.4 |
-| Local development DB | H2 / PostgreSQL |
-| Containerization | Docker |
-| Container Registry | GitHub Container Registry |
-| CI/CD | GitHub Actions |
-| Code Quality | SonarQube Cloud |
-| SAST | GitHub CodeQL |
-| Test Coverage | JaCoCo |
-| Container Security | Trivy |
-| DAST | OWASP ZAP |
-| Cloud | Microsoft Azure |
-| Infrastructure as Code | Terraform |
-| Configuration Management | Ansible |
-| Kubernetes Distribution | K3s |
-| Kubernetes Ingress | Traefik |
-| Package Management | Helm |
-| Metrics | Spring Boot Actuator + Micrometer |
-| Monitoring | Prometheus |
-| Visualization | Grafana |
-| Alerting | Alertmanager |
-| Notifications | Gmail SMTP |
+### Application
+
+- Java / Spring Boot
+- Maven Wrapper
+- Spring Data JPA
+- Thymeleaf
+- PostgreSQL
+- Spring Boot Actuator
+- Micrometer Prometheus Registry
+
+### CI/CD
+
+- Git
+- GitHub
+- GitHub Actions
+- GitHub Container Registry
+- Azure OIDC
+- Azure Run Command
+
+### Quality and Security
+
+- SonarQube Cloud
+- CodeQL
+- JaCoCo
+- Trivy
+- OWASP ZAP
+
+### Containers and Orchestration
+
+- Docker
+- Docker Compose
+- Kubernetes
+- K3s
+- Traefik
+
+### Infrastructure and Configuration
+
+- Microsoft Azure
+- Terraform
+- Ansible
+
+### Observability
+
+- Prometheus
+- Grafana
+- Alertmanager
+- Gmail SMTP notifications
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 ```text
-spring-petclinic-devops/
-│
+.
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
 │       ├── cd.yml
-│       ├── dast.yml
-│       └── deploy-and-test-cluster.yml
+│       └── dast.yml
 │
 ├── infra/
 │   ├── terraform/
-│   │   ├── provider.tf
-│   │   ├── versions.tf
-│   │   ├── variables.tf
-│   │   ├── network.tf
-│   │   ├── connectivity.tf
-│   │   ├── security.tf
-│   │   ├── vm.tf
-│   │   └── cd-identity.tf
-│   │
 │   └── ansible/
-│       ├── inventory.ini
-│       ├── requirements.yml
-│       ├── site.yml
-│       └── roles/
-│           ├── k3s/
-│           ├── helm/
-│           └── monitoring/
 │
 ├── k8s/
 │   ├── base/
-│   │   ├── namespace.yaml
-│   │   ├── petclinic-configmap.yaml
-│   │   ├── petclinic-deployment.yaml
-│   │   ├── petclinic-service.yaml
-│   │   ├── petclinic-metrics-service.yaml
-│   │   ├── petclinic-ingress.yaml
-│   │   ├── postgres-service.yaml
-│   │   ├── postgres-statefulset.yaml
-│   │   ├── postgres-init-configmap.yaml
-│   │   └── postgres-init-job.yaml
-│   │
 │   └── monitoring/
-│       ├── values.yaml
-│       ├── petclinic-servicemonitor.yaml
-│       ├── petclinic-prometheusrule.yaml
-│       ├── petclinic-dashboard.yaml
-│       └── petclinic-alertmanagerconfig.yaml.tpl
 │
 ├── scripts/
-│   ├── package-cd-manifests.sh
-│   └── update-ssh-cidr.sh
 │
 ├── src/
+│
 ├── Dockerfile
-├── docker-compose.yml
-├── .env.example
+├── compose.yaml
 ├── pom.xml
 └── README.md
 ```
 
----
-
-# Application
-
-Spring PetClinic is a Spring Boot application providing a realistic application layer with:
-
-- Web controllers
-- persistence
-- relational database access
-- Maven tests
-- multiple application endpoints
-- database initialization
-- Spring Boot Actuator
-
-Using an existing application allowed the project to focus on DevOps, Cloud infrastructure, security, deployment automation and observability rather than implementing a new business application.
-
----
-
-# Java and Build Configuration
-
-The Maven project targets:
-
-```xml
-<java.version>17</java.version>
-```
-
-The CI pipeline and Docker build use **Eclipse Temurin JDK 21** to build the Java 17-targeted application.
-
-Run the complete Maven validation locally with:
-
-```bash
-./mvnw -B verify
-```
-
-The `verify` lifecycle includes the project's automated tests and the JaCoCo coverage verification.
-
----
-
-# Test Coverage with JaCoCo
-
-JaCoCo is configured directly in `pom.xml`.
-
-The project enforces a minimum bundle line coverage ratio of:
-
-```text
-80%
-```
-
-The Maven build fails when the configured minimum coverage requirement is not respected.
-
-This is a quality gate, not a statement that the application always has exactly 80% coverage.
-
----
-
-# Local Execution with H2
-
-For a quick local validation, PetClinic can run using its default embedded H2 database.
-
-```bash
-git clone https://github.com/raghadkhedhiri/spring-petclinic-devops.git
-cd spring-petclinic-devops
-
-./mvnw spring-boot:run
-```
-
-Then open:
-
-```text
-http://localhost:8080
-```
-
-H2 is useful for quick development and validation without requiring an external database.
-
----
-
-# Local PostgreSQL Environment
-
-For a more production-like local environment, PostgreSQL is available through Docker Compose.
-
-Create a local environment file:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```dotenv
-POSTGRES_DB=petclinic
-POSTGRES_USER=petclinic
-POSTGRES_PASSWORD=CHANGE_ME
-```
-
-The real `.env` file must never be committed.
-
-Build the application image:
-
-```bash
-docker build -t petclinic-app:1.3 .
-```
-
-Start the application and database:
-
-```bash
-docker compose up -d
-```
-
-Check the containers:
-
-```bash
-docker compose ps
-```
-
-Access PetClinic at:
-
-```text
-http://localhost:8080
-```
-
-Stop the environment:
-
-```bash
-docker compose down
-```
-
----
-
-# Docker Image
-
-The project contains a multi-stage `Dockerfile`.
-
-Build stage:
-
-```text
-eclipse-temurin:21-jdk
-```
-
-Runtime stage:
-
-```text
-eclipse-temurin:21-jre-ubi10-minimal
-```
-
-The final container exposes:
-
-```text
-8080
-```
-
-Build manually with:
-
-```bash
-docker build -t petclinic-app:local .
-```
+The repository separates application code, infrastructure, Kubernetes resources, automation and CI/CD workflows.
 
 ---
 
 # Continuous Integration
 
-The main CI workflow is:
+The main CI workflow is implemented with GitHub Actions.
+
+It is triggered for:
+
+- Pull Requests targeting `main`
+- pushes to `main`
+
+This provides two levels of validation:
 
 ```text
-.github/workflows/ci.yml
-```
-
-Workflow name:
-
-```text
-PetClinic CI
-```
-
-It runs on:
-
-```text
-pull_request -> main
-push -> main
-```
-
-This provides two complementary validation levels:
-
-```text
-Feature branch
-     |
-     v
+feature branch
+      |
+      v
 Pull Request
-     |
-     v
-CI validation before merge
-     |
-     v
-Merge into main
-     |
-     v
-CI validation of final main state
+      |
+      v
+CI validation
+      |
+      v
+Merge
+      |
+      v
+main
+      |
+      v
+Final CI validation
 ```
+
+The CI pipeline contains several complementary controls.
 
 ---
 
-## Maven Build, Tests and SonarQube
+## Maven Build and Tests
 
-The `build-and-test` job runs:
+The project is built and tested using the Maven Wrapper:
 
 ```bash
-./mvnw -B verify \
-  org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-  -Dsonar.projectKey=raghadkhedhiri_spring-petclinic-devops
+./mvnw -B verify
 ```
 
-The SonarQube token is provided through:
-
-```text
-SONAR_TOKEN
-```
-
-as a GitHub Actions secret.
+Using the Maven Wrapper helps keep the build reproducible without requiring a manually installed Maven version.
 
 ---
 
-# Static Application Security Testing
+## SonarQube Cloud
 
-## CodeQL
+SonarQube Cloud is integrated into the CI workflow to perform static code-quality and security analysis.
 
-GitHub CodeQL is executed in a dedicated CI job:
+The analysis is executed from Maven during the build.
+
+It provides checks such as:
+
+- code quality
+- maintainability
+- reliability
+- security issues
+- duplication
+- quality gate validation
+
+Authentication is provided through a GitHub Actions secret and is not committed to the repository.
+
+---
+
+## CodeQL SAST
+
+GitHub CodeQL is used as an additional Static Application Security Testing mechanism.
+
+The CodeQL job:
+
+1. checks out the source code;
+2. initializes CodeQL for Java/Kotlin;
+3. builds the application;
+4. performs semantic security analysis.
+
+This complements SonarQube by providing a second static-security analysis layer.
+
+---
+
+## JaCoCo Test Coverage
+
+JaCoCo is integrated into Maven to measure automated test coverage.
+
+A minimum line coverage threshold of:
 
 ```text
-SAST - CodeQL
+80 %
 ```
 
-The workflow:
+is configured in the Maven verification phase.
 
-1. checks out the repository;
-2. configures Java;
-3. initializes CodeQL;
-4. builds the application;
-5. performs semantic security analysis.
+The build therefore validates both test execution and the configured coverage requirement.
 
-The configured language is:
+---
+
+# Containerization
+
+## Docker
+
+PetClinic is containerized using a multi-stage Docker build.
+
+The build stage compiles the application, while the runtime stage contains only the components required to execute the application.
+
+This approach reduces unnecessary build tools in the final runtime image.
+
+The application listens on:
 
 ```text
-java-kotlin
+8080
 ```
 
 ---
 
-# Container Security
+## PostgreSQL with Docker Compose
 
-The CI pipeline builds a Docker image and scans it with **Trivy**.
+During the intermediate local integration phase, PostgreSQL can be run using Docker Compose.
 
-The scan targets:
+Database credentials are provided through environment variables rather than hard-coded into the application.
+
+Sensitive local configuration files are excluded from Git.
+
+An example environment configuration can be provided without publishing real credentials.
+
+---
+
+# Container Security with Trivy
+
+The Docker image built by the CI pipeline is scanned using Trivy.
+
+The scan covers:
 
 ```text
-OS vulnerabilities
-Library vulnerabilities
+OS packages
++
+application libraries
 ```
 
-The build fails for detected vulnerabilities with severity:
+The workflow is configured to detect:
 
 ```text
 HIGH
 CRITICAL
 ```
 
-Relevant configuration:
+severity findings and uses a non-zero exit code when such findings are detected.
 
-```yaml
-exit-code: '1'
-severity: 'HIGH,CRITICAL'
-vuln-type: 'os,library'
-```
+Security databases evolve independently from the source code. Therefore, a scan may report newly disclosed vulnerabilities even when no application source file has changed.
 
 ---
 
 # GitHub Container Registry
 
-Images are published to:
+After successful validation on the main branch, the Docker image can be published to GitHub Container Registry.
+
+Images are versioned using the Git commit SHA.
+
+A moving `latest` tag is also maintained for the current main version.
+
+Conceptually:
 
 ```text
-ghcr.io/raghadkhedhiri/petclinic-app
+ghcr.io/<owner>/petclinic-app:<commit-sha>
+ghcr.io/<owner>/petclinic-app:latest
 ```
 
-Image publication only happens on a successful push workflow.
-
-Two tags are produced:
-
-```text
-<full-git-commit-sha>
-latest
-```
-
-Example:
-
-```text
-ghcr.io/raghadkhedhiri/petclinic-app:<COMMIT_SHA>
-```
-
-Using the exact commit SHA provides traceability between source code, CI validation and the image deployed to Kubernetes.
+Using immutable commit-based tags improves deployment traceability.
 
 ---
 
-# Kubernetes Manifest Validation
+# Microsoft Azure Infrastructure
 
-A dedicated workflow validates the application manifests:
+The target environment is hosted on Microsoft Azure.
 
-```text
-.github/workflows/deploy-and-test-cluster.yml
-```
+The infrastructure includes resources such as:
 
-Workflow name:
+- Resource Group
+- Virtual Network
+- Subnet
+- Network Security Group
+- Network Interface
+- Public IP address
+- Linux Virtual Machine
+- Managed Identity used for CD
 
-```text
-Validate PetClinic Kubernetes Manifests
-```
-
-It creates a temporary Kubernetes cluster using KinD and executes server-side dry-run validation of the application manifests.
-
-This provides an additional validation layer before deployment to the real K3s cluster.
+The infrastructure is managed as code rather than created manually as the primary deployment mechanism.
 
 ---
 
-# Azure Infrastructure
+# Infrastructure as Code with Terraform
 
-Azure infrastructure is defined under:
+Terraform is used to describe and provision the Azure infrastructure.
+
+The Terraform configuration is located under:
 
 ```text
 infra/terraform/
 ```
 
-Terraform manages:
-
-- Resource Group
-- Virtual Network
-- Subnet
-- Network Interface
-- Network Security Group
-- Static Public IP
-- Ubuntu Linux Virtual Machine
-- GitHub CD managed identity
-- Azure federated identity credential
-- custom CD RBAC role
-- role assignment
-
----
-
-## Terraform Versions
-
-Required Terraform version:
-
-```text
->= 1.15.0, < 2.0.0
-```
-
-AzureRM provider:
-
-```text
-~> 4.0
-```
-
----
-
-# Azure Network
-
-The Terraform network uses:
-
-```text
-VNet:   10.10.0.0/16
-Subnet: 10.10.1.0/24
-```
-
-Inbound NSG access is intentionally restricted.
-
-### SSH
-
-```text
-TCP/22
-```
-
-SSH is allowed only from:
-
-```text
-admin_cidr
-```
-
-which should contain the administrator's current public IPv4 address as `/32`.
-
-### HTTP
-
-The public application is exposed through:
-
-```text
-TCP/80
-```
-
-Traffic reaches:
-
-```text
-Internet
-   |
-   v
-Azure Public IP
-   |
-   v
-Network Security Group
-   |
-   v
-Azure VM
-   |
-   v
-K3s Traefik
-   |
-   v
-PetClinic Ingress
-   |
-   v
-PetClinic Service
-   |
-   v
-PetClinic Pods :8080
-```
-
----
-
-# Terraform Configuration
-
-Create a local:
-
-```text
-infra/terraform/terraform.tfvars
-```
-
-Example:
-
-```hcl
-admin_cidr         = "YOUR_PUBLIC_IP/32"
-ssh_public_key_path = "~/.ssh/id_rsa.pub"
-
-# Optional overrides:
-# location          = "polandcentral"
-# vm_size           = "Standard_B4as_v2"
-# admin_username    = "azureuser"
-# availability_zone = "2"
-```
-
-Do not commit `terraform.tfvars` if it contains environment-specific or sensitive information.
-
-Authenticate with Azure:
-
-```bash
-az login
-```
-
-Initialize Terraform:
-
-```bash
-terraform -chdir=infra/terraform init
-```
-
-Validate formatting:
+Typical validation commands are:
 
 ```bash
 terraform -chdir=infra/terraform fmt -check
-```
-
-Validate configuration:
-
-```bash
 terraform -chdir=infra/terraform validate
-```
-
-Generate a plan:
-
-```bash
 terraform -chdir=infra/terraform plan
 ```
 
-Review the plan carefully before applying:
+Actual infrastructure changes should always be reviewed through the Terraform plan before applying them.
 
-```bash
-terraform -chdir=infra/terraform apply
-```
-
----
-
-# Dynamic SSH CIDR Helper
-
-The repository contains:
-
-```text
-scripts/update-ssh-cidr.sh
-```
-
-The script:
-
-- detects the current public IPv4 address;
-- updates the local `admin_cidr`;
-- executes `terraform fmt -check`;
-- executes `terraform validate`;
-- creates a Terraform plan;
-- displays the plan for manual review.
-
-Important:
-
-> The script does **not** execute `terraform apply`.
-
-Run:
-
-```bash
-./scripts/update-ssh-cidr.sh
-```
-
-The resulting plan must be reviewed before any infrastructure change is applied.
-
----
-
-# Azure Cost Management
-
-The project was implemented using an Azure for Students subscription.
-
-Cloud resources were monitored through Azure Cost Management during development.
-
-The VM is the main cost-generating resource. When the environment is not required, the VM can be stopped and **deallocated** to preserve student credits.
-
-This is an operational cost-control practice and is not presented as an automated Terraform feature.
+Local variable files and sensitive values are not intended to be committed to Git.
 
 ---
 
 # Configuration Management with Ansible
 
-Ansible configures the Azure VM after infrastructure provisioning.
+Ansible is used to configure the Azure Linux VM and automate the installation of the Kubernetes environment.
 
-Main playbook:
-
-```text
-infra/ansible/site.yml
-```
-
-It applies three roles:
+The configuration is located under:
 
 ```text
-k3s
-helm
-monitoring
+infra/ansible/
 ```
+
+Ansible is used notably for:
+
+- host configuration;
+- K3s installation;
+- Helm installation;
+- monitoring-stack deployment;
+- monitoring configuration.
+
+This keeps server configuration reproducible rather than relying on undocumented manual operations.
 
 ---
 
-# K3s
+# Kubernetes with K3s
 
-The K3s version is pinned to:
+The application runs on a K3s Kubernetes cluster hosted on the Azure VM.
 
-```text
-v1.36.3+k3s1
-```
+K3s provides a lightweight Kubernetes distribution suitable for the project environment.
 
-The Ansible role performs installation, configuration and verification of the K3s server.
-
-The project currently uses a **single K3s server node**.
-
----
-
-# Helm
-
-Helm installation is also automated with Ansible.
-
-Pinned version:
-
-```text
-v4.2.4
-```
-
-The binary integrity is verified using a configured SHA-256 checksum.
-
----
-
-# Ansible Usage
-
-Update:
-
-```text
-infra/ansible/inventory.ini
-```
-
-for the target Azure VM.
-
-Example:
-
-```ini
-[k3s_server]
-petclinic-vm ansible_host=<AZURE_PUBLIC_IP> ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa
-```
-
-Never commit private SSH keys.
-
-Install required Ansible collections if necessary:
-
-```bash
-ansible-galaxy collection install -r infra/ansible/requirements.yml
-```
-
-Validate the playbook:
-
-```bash
-ansible-playbook \
-  -i infra/ansible/inventory.ini \
-  infra/ansible/site.yml \
-  --syntax-check
-```
-
-Apply:
-
-```bash
-ansible-playbook \
-  -i infra/ansible/inventory.ini \
-  infra/ansible/site.yml
-```
-
-Ansible roles are designed to be rerunnable and idempotent where applicable.
-
----
-
-# Kubernetes Architecture
-
-The project deployment manifests are located in:
-
-```text
-k8s/base/
-```
-
-The application runs in:
-
-```text
-namespace: petclinic
-```
+The cluster uses Traefik as the ingress controller.
 
 ---
 
 ## PetClinic Deployment
 
-PetClinic is configured with:
+PetClinic is deployed as a Kubernetes Deployment with:
 
 ```text
-replicas: 2
+2 replicas
 ```
 
-Container ports:
+Using two application replicas provides application-level redundancy within the node.
 
-```text
-8080 -> application HTTP
-9090 -> management / metrics
-```
-
-Resource configuration:
-
-```text
-requests:
-  CPU:    250m
-  Memory: 512Mi
-
-limits:
-  CPU:    1
-  Memory: 1Gi
-```
-
-Health checks include:
-
-```text
-startupProbe
-readinessProbe
-livenessProbe
-```
-
-through:
-
-```text
-/readyz
-/livez
-```
+Because the current project uses a single K3s node, this should not be interpreted as full cluster high availability.
 
 ---
 
-# PetClinic Service and Ingress
+## PostgreSQL StatefulSet
 
-PetClinic uses an internal Kubernetes:
+PostgreSQL is deployed using a Kubernetes StatefulSet.
 
-```text
-ClusterIP Service
-```
+Persistent storage is requested through a PersistentVolumeClaim.
 
-Mapping:
+Conceptually:
 
 ```text
-Service port 80
-     |
-     v
-Container port 8080
-```
-
-Traefik is used as the K3s Ingress Controller.
-
-The application path is:
-
-```text
-/
-```
-
-The PetClinic Service also enables Traefik sticky-session cookies.
-
----
-
-# PostgreSQL on Kubernetes
-
-PostgreSQL runs as a:
-
-```text
-StatefulSet
-```
-
-with:
-
-```text
-replicas: 1
-```
-
-Image:
-
-```text
-postgres:18.4
-```
-
-PostgreSQL includes:
-
-```text
-startupProbe
-readinessProbe
-livenessProbe
-```
-
-using `pg_isready`.
-
----
-
-# Persistent Storage
-
-PostgreSQL requests:
-
-```text
-5Gi
-```
-
-through a:
-
-```text
+PetClinic Pods
+      |
+      v
+PostgreSQL Service
+      |
+      v
+PostgreSQL StatefulSet
+      |
+      v
 PersistentVolumeClaim
 ```
 
-using the K3s:
-
-```text
-local-path
-```
-
-storage class.
-
-The PVC provides persistent storage for PostgreSQL data across Pod recreation.
+The database is therefore separated from the application Pods and benefits from persistent storage.
 
 ---
 
-# Database Initialization
+## Kubernetes Networking
 
-Database schema and seed data are handled by a dedicated Kubernetes initialization job:
-
-```text
-postgres-init
-```
-
-The initialization logic is idempotent.
-
-The job:
-
-1. applies the PostgreSQL schema;
-2. checks whether application data already exists;
-3. loads seed data only when required.
-
-PetClinic itself is configured in Kubernetes with:
+The public application request follows this path:
 
 ```text
-SPRING_SQL_INIT_MODE=never
+Internet
+   |
+   v
+Azure Public IP :80
+   |
+   v
+Azure Network Security Group
+   |
+   v
+K3s / Traefik
+   |
+   v
+Kubernetes Ingress
+   |
+   v
+PetClinic Service :80
+   |
+   v
+PetClinic Pods :8080
 ```
 
-so database initialization responsibility remains separated from the application Pods.
-
----
-
-# Kubernetes Secrets
-
-Database credentials are not stored directly in the committed application manifests.
-
-The Kubernetes deployment expects:
-
-```text
-postgres-secret
-```
-
-with the following keys:
-
-```text
-database
-username
-password
-```
-
-Example creation:
-
-```bash
-sudo k3s kubectl create namespace petclinic
-```
-
-```bash
-sudo k3s kubectl -n petclinic create secret generic postgres-secret \
-  --from-literal=database=petclinic \
-  --from-literal=username=petclinic \
-  --from-literal=password='CHANGE_ME'
-```
-
-Never commit the real database password.
+The Pods themselves are not directly exposed to the Internet.
 
 ---
 
 # Continuous Deployment
 
-CD workflow:
+Continuous Deployment is implemented using a dedicated GitHub Actions workflow.
+
+The CD workflow starts only after the corresponding CI workflow has completed successfully on `main`.
+
+Conceptually:
 
 ```text
-.github/workflows/cd.yml
-```
-
-Workflow name:
-
-```text
-PetClinic CD
-```
-
-It starts only after a successful:
-
-```text
-PetClinic CI
-```
-
-execution on `main`.
-
-The CD deploys the **exact commit SHA validated by CI**.
-
----
-
-# Azure OIDC Authentication
-
-GitHub Actions authenticates to Azure using **OpenID Connect (OIDC)**.
-
-This eliminates the need to store a long-lived Azure client secret in GitHub.
-
-GitHub Actions requests a short-lived identity token, which Azure validates through a federated identity credential.
-
-Required GitHub repository variables:
-
-```text
-AZURE_CLIENT_ID
-AZURE_TENANT_ID
-AZURE_SUBSCRIPTION_ID
-```
-
-GitHub workflow permissions include:
-
-```yaml
-id-token: write
-contents: read
+CI success
+    |
+    v
+CD workflow
+    |
+    v
+Azure authentication
+    |
+    v
+Deployment command
+    |
+    v
+Kubernetes rollout
+    |
+    v
+Deployment verification
 ```
 
 ---
 
-# Least-Privilege Azure RBAC
+## Secure Azure Authentication with OIDC
 
-Terraform creates a dedicated managed identity for CD.
+The deployment workflow uses OpenID Connect instead of storing a long-lived Azure password or service-principal secret in GitHub.
 
-The custom role is limited to:
+The authentication flow is:
 
 ```text
-Microsoft.Compute/virtualMachines/read
-Microsoft.Compute/virtualMachines/runCommand/action
+GitHub Actions
+      |
+      | OIDC identity token
+      v
+Microsoft Entra ID / Azure
+      |
+      | short-lived authentication
+      v
+Authorized deployment operation
 ```
 
-The role is assigned to the target Azure VM.
-
-The CD workflow therefore does not require broad subscription-level administrative privileges.
+This reduces dependency on persistent Cloud credentials.
 
 ---
 
-# Versioned Kubernetes Deployment
+## Least-Privilege RBAC
 
-Before deployment, the CD workflow runs:
+A dedicated Azure identity and limited role are used by the deployment workflow.
 
-```text
-scripts/package-cd-manifests.sh
-```
-
-The script accepts only an image reference matching:
-
-```text
-ghcr.io/<owner>/petclinic-app:<40-character-git-sha>
-```
-
-It creates a temporary deployment bundle containing the versioned application manifests and replaces the deployment image with the exact CI commit SHA.
-
-This prevents the remote VM from depending on an arbitrary or stale local Git checkout.
+The objective is to provide only the permissions required by the CD process rather than assigning broad administrative privileges.
 
 ---
 
-# Deployment Verification
+## Deployment through Azure Run Command
 
-Azure Run Command executes the deployment remotely on the K3s VM.
+The GitHub-hosted runner does not require permanent SSH access to the VM.
 
-The workflow:
+Azure Run Command is used to execute the controlled deployment operation on the Azure VM.
 
-1. applies the namespace;
-2. applies the packaged manifests;
-3. waits for the PetClinic rollout;
-4. reads the deployed image;
-5. compares it to the expected CI SHA;
-6. checks running PetClinic Pods;
-7. performs an HTTP application test;
-8. emits:
+The deployment process:
 
-```text
-PETCLINIC_DEPLOYMENT_OK
-```
+1. identifies the image corresponding to the validated Git commit;
+2. updates the PetClinic Kubernetes Deployment;
+3. waits for the Kubernetes rollout;
+4. verifies the deployed image;
+5. checks Pod status;
+6. performs an application availability test.
 
-GitHub Actions verifies this marker before considering CD successful.
+This ensures that a workflow is not considered successful solely because the deployment command was submitted.
 
 ---
 
 # Dynamic Application Security Testing
 
-DAST workflow:
+After a successful deployment, a separate DAST workflow validates the deployed application using OWASP ZAP.
+
+The process is:
 
 ```text
-.github/workflows/dast.yml
-```
-
-Workflow name:
-
-```text
-PetClinic DAST
-```
-
-It runs after a successful CD deployment and can also be launched manually.
-
-Before scanning, it validates that the deployed application is reachable.
-
-The target URL is provided using:
-
-```text
-PETCLINIC_BASE_URL
-```
-
-as a GitHub repository variable.
-
----
-
-## OWASP ZAP
-
-The project uses:
-
-```text
+Successful CD
+     |
+     v
+Check application availability
+     |
+     v
 OWASP ZAP Baseline Scan
 ```
 
-with ZAP:
+The baseline scan is intentionally used as a security-observation step rather than as evidence that the application contains no vulnerabilities.
 
-```text
-2.17.0
-```
-
-The container image is pinned by digest.
-
-The generated report is stored as a GitHub Actions artifact:
-
-```text
-zap-baseline-report
-```
-
-The baseline scan is currently configured as:
-
-```yaml
-fail_action: false
-```
-
-This means DAST currently establishes and reports a security baseline without automatically blocking the delivery pipeline for every detected warning.
-
-A successful workflow therefore means that the scan executed correctly, **not** that the application has zero security findings.
+The generated scan report can be preserved as a GitHub Actions artifact for analysis.
 
 ---
 
-# Application Security Hardening
+# Monitoring and Observability
 
-The application includes Spring Security configuration with CSRF protection enabled.
+The final platform includes an observability layer based on:
 
-Custom HTTP security headers include:
-
-```text
-Content-Security-Policy
-X-Frame-Options: DENY
-X-Content-Type-Options: nosniff
-```
-
-The Content Security Policy restricts scripts, images, fonts, framing and form submission to reduce common Web security risks.
+- Spring Boot Actuator
+- Micrometer
+- Prometheus
+- Grafana
+- Alertmanager
 
 ---
 
-# Observability
+## Application Metrics
 
-Spring PetClinic uses:
+Micrometer exposes application metrics in Prometheus format.
 
-```text
-Spring Boot Actuator
-Micrometer Prometheus Registry
-```
-
-Application traffic uses:
-
-```text
-8080
-```
-
-while management metrics use a dedicated port:
+Spring Boot management endpoints use a dedicated management port:
 
 ```text
 9090
 ```
 
-Only the following management endpoints are exposed:
+The relevant monitoring endpoints include:
 
 ```text
-health
-prometheus
+/actuator/health
+/actuator/prometheus
 ```
 
-Prometheus metrics are available internally through:
+The management endpoint is separated from the public application port.
+
+---
+
+## ServiceMonitor
+
+A Kubernetes Service dedicated to metrics exposes PetClinic metrics internally.
+
+A Prometheus `ServiceMonitor` instructs Prometheus to scrape:
 
 ```text
 /actuator/prometheus
 ```
 
----
+at a configured interval.
 
-# Metrics Service
-
-Kubernetes exposes metrics through the internal service:
-
-```text
-petclinic-metrics
-```
-
-It is a:
-
-```text
-ClusterIP
-```
-
-and is not intentionally exposed to the public Internet.
-
----
-
-# Prometheus ServiceMonitor
-
-The PetClinic `ServiceMonitor` scrapes:
-
-```text
-/actuator/prometheus
-```
-
-every:
-
-```text
-30 seconds
-```
-
-with a:
-
-```text
-10 second
-```
-
-scrape timeout.
-
----
-
-# Monitoring Stack
-
-The monitoring stack is deployed using:
-
-```text
-Ansible
-Helm
-kube-prometheus-stack
-```
-
-Helm chart:
-
-```text
-kube-prometheus-stack
-```
-
-Pinned chart version:
-
-```text
-89.2.4
-```
-
-Monitoring namespace:
-
-```text
-monitoring
-```
+Monitoring services remain internal to the Kubernetes environment rather than being permanently exposed publicly.
 
 ---
 
 # Prometheus
 
-Prometheus uses an internal:
+Prometheus collects and stores metrics from the application and Kubernetes environment.
 
-```text
-ClusterIP
-```
+The monitoring configuration includes persistent storage and retention settings.
 
-service.
-
-Retention:
-
-```text
-10 days
-```
-
-Maximum retention size:
-
-```text
-8 GB
-```
-
-Persistent storage:
-
-```text
-10 Gi
-```
-
-Prometheus is configured to discover PetClinic `ServiceMonitor` and `PrometheusRule` resources from both:
-
-```text
-monitoring
-petclinic
-```
-
-namespaces.
+PetClinic monitoring verifies that application metric targets can be successfully scraped.
 
 ---
 
 # Grafana
 
-Grafana is enabled through `kube-prometheus-stack`.
+Grafana provides the visualization layer.
 
-Service type:
+The project includes a version-controlled PetClinic dashboard displaying information such as:
 
-```text
-ClusterIP
-```
+- PetClinic metrics target state
+- available replicas
+- HTTP request rate
+- HTTP latency
+- JVM heap usage
+- application CPU usage
+- container restarts
 
-Public ingress:
-
-```text
-disabled
-```
-
-Persistent storage:
-
-```text
-2 Gi
-```
-
-The administrator password is stored in a Kubernetes Secret:
-
-```text
-petclinic-grafana-admin
-```
-
-and is not stored directly in the repository.
-
-The required environment variable when initially creating the Secret is:
-
-```text
-GRAFANA_ADMIN_PASSWORD
-```
+This provides an operational view of the running application.
 
 ---
 
-# PetClinic Grafana Dashboard
+# Alerting
 
-A version-controlled Grafana dashboard is provided in:
+Prometheus rules are configured for operational conditions such as:
 
-```text
-k8s/monitoring/petclinic-dashboard.yaml
-```
+- PetClinic monitoring target unavailable;
+- expected application replicas unavailable;
+- PetClinic container restarts.
 
-The dashboard includes:
-
-```text
-PetClinic metrics target state
-Available PetClinic replicas
-HTTP request rate
-Average HTTP latency
-JVM heap memory
-PetClinic process CPU
-Container restarts
-```
-
-The monitoring validation confirmed the PetClinic metrics target as:
-
-```text
-UP
-```
-
-with:
-
-```text
-2
-```
-
-available application replicas.
-
----
-
-# Prometheus Alert Rules
-
-The project defines three application-specific alerts.
-
-## PetClinicTargetDown
-
-Severity:
-
-```text
-critical
-```
-
-Triggered when Prometheus cannot scrape the PetClinic metrics target for more than:
-
-```text
-2 minutes
-```
-
-## PetClinicDeploymentUnavailable
-
-Severity:
-
-```text
-warning
-```
-
-Triggered when available deployment replicas are lower than the expected replica count for:
-
-```text
-5 minutes
-```
-
-## PetClinicContainerRestarting
-
-Severity:
-
-```text
-warning
-```
-
-Triggered when a PetClinic container restarts during the monitored interval.
-
----
-
-# Alertmanager
-
-Alertmanager is enabled with:
-
-```text
-1 Gi
-```
-
-persistent storage.
-
-It remains accessible through an internal:
-
-```text
-ClusterIP
-```
-
-service.
-
-PetClinic uses a dedicated:
-
-```text
-AlertmanagerConfig
-```
-
-resource.
-
-Alerts routed to Gmail are filtered to:
-
-```text
-warning
-critical
-```
-
-This avoids routing unrelated informational monitoring noise.
+The alerts are processed by Alertmanager.
 
 ---
 
 # Gmail Notifications
 
-Alertmanager sends incident notifications through:
+Alertmanager is configured to send selected alerts by email through Gmail SMTP.
+
+Only relevant severity levels are routed to the email receiver:
 
 ```text
-smtp.gmail.com:587
+warning
+critical
 ```
 
-with TLS required.
+The Gmail application password is stored in a Kubernetes Secret and is not committed to the repository.
 
-Configuration supports both:
+The notification chain was validated using a synthetic monitoring alert rather than by intentionally breaking the production application.
+
+The test validated both lifecycle states:
 
 ```text
 FIRING
 RESOLVED
 ```
 
-notifications.
-
-The Gmail application password is stored in a Kubernetes Secret:
+The resulting chain is:
 
 ```text
-petclinic-gmail-smtp
-```
-
-The password is never stored directly in Git.
-
-When Gmail alerting is enabled, the following environment variables are used:
-
-```text
-PETCLINIC_ALERT_EMAIL
-PETCLINIC_GMAIL_APP_PASSWORD
-```
-
-Example:
-
-```bash
-export PETCLINIC_ALERT_EMAIL="your-address@example.com"
-export PETCLINIC_GMAIL_APP_PASSWORD="YOUR_APP_PASSWORD"
-```
-
-Do not place these values in committed files.
-
-Enable the email tasks when executing Ansible with the appropriate monitoring configuration, for example:
-
-```bash
-ansible-playbook \
-  -i infra/ansible/inventory.ini \
-  infra/ansible/site.yml \
-  -e monitoring_email_alerts_enabled=true
-```
-
----
-
-# Alerting Validation
-
-The Prometheus → Alertmanager → Gmail chain was validated end-to-end using a temporary synthetic Prometheus rule.
-
-The test did **not** intentionally create a real PetClinic outage.
-
-Validation confirmed:
-
-```text
-Prometheus alert -> FIRING
-Alertmanager     -> active alert
-Gmail            -> FIRING email received
-
-Synthetic rule removed
-
-Prometheus alert -> resolved
-Alertmanager     -> resolution
-Gmail            -> RESOLVED email received
-```
-
-This verifies the complete notification path without disrupting the production-like PetClinic workload.
-
----
-
-# Monitoring Security
-
-Prometheus, Grafana and Alertmanager are configured as internal Kubernetes services.
-
-No permanent Azure public inbound rules are required for the monitoring interfaces.
-
-This minimizes the public attack surface of the monitoring stack.
-
----
-
-# GitHub Repository Configuration
-
-The CI/CD implementation expects the following GitHub configuration.
-
-## Secrets
-
-```text
-SONAR_TOKEN
-POSTGRES_PASSWORD
-```
-
-## Repository Variables
-
-```text
-AZURE_CLIENT_ID
-AZURE_TENANT_ID
-AZURE_SUBSCRIPTION_ID
-PETCLINIC_BASE_URL
-```
-
-Sensitive values must be stored using GitHub Secrets or Kubernetes Secrets, not committed into source control.
-
----
-
-# DevSecOps Pipeline
-
-The complete automated path is:
-
-```text
-Feature branch
-      |
-      v
-Pull Request
-      |
-      v
-PetClinic CI
-      |
-      +--> Maven verify
-      +--> JaCoCo
-      +--> SonarQube
-      +--> CodeQL
-      +--> Docker Build
-      +--> Trivy
-      |
-      v
-Merge to main
-      |
-      v
-PetClinic CI
-      |
-      v
-GHCR image tagged with commit SHA
-      |
-      v
-PetClinic CD
-      |
-      +--> Azure OIDC
-      +--> Least-Privilege RBAC
-      +--> Azure Run Command
-      +--> Kubernetes rollout
-      +--> Image SHA verification
-      |
-      v
-PetClinic DAST
-      |
-      v
-OWASP ZAP Baseline
-      |
-      v
-Running PetClinic on K3s
-      |
-      v
-Prometheus / Grafana
-      |
-      v
+Prometheus
+    |
+    v
 Alertmanager
-      |
-      v
-Gmail FIRING / RESOLVED
+    |
+    v
+Gmail
 ```
 
 ---
 
-# Final Validation Summary
+# Security Principles
 
-| Component | Validation |
-|---|---|
-| Maven | Build and tests executed through CI |
-| JaCoCo | 80% minimum line-coverage gate configured |
-| SonarQube | Quality analysis integrated |
-| CodeQL | SAST integrated |
-| Docker | Multi-stage application image |
-| Trivy | HIGH/CRITICAL image vulnerability gate |
-| GHCR | SHA and `latest` tags on main push |
-| Terraform | Azure infrastructure managed as code |
-| Ansible | K3s, Helm and monitoring configuration |
-| K3s | Single server node deployed |
-| PetClinic | Two Kubernetes replicas |
-| PostgreSQL | StatefulSet with persistent storage |
-| Traefik | HTTP Ingress routing |
-| CD | OIDC + RBAC + Azure Run Command |
-| Deployment | Rollout and deployed SHA verified |
-| OWASP ZAP | DAST baseline workflow |
-| Prometheus | PetClinic metrics collected |
-| Grafana | PetClinic dashboard operational |
-| Alertmanager | Application alerts routed |
-| Gmail | FIRING and RESOLVED notifications validated |
+The project applies several security practices throughout the delivery chain:
+
+- secrets are kept out of Git;
+- GitHub Actions secrets and repository variables are used where appropriate;
+- Azure authentication uses OIDC;
+- Cloud permissions follow a least-privilege approach;
+- CodeQL provides SAST analysis;
+- SonarQube provides code-quality and security analysis;
+- Trivy scans the container image and libraries;
+- OWASP ZAP performs dynamic application testing;
+- monitoring services are not intended to remain publicly exposed;
+- PostgreSQL is accessed internally through Kubernetes networking.
 
 ---
 
-# Security Principles Applied
+# Traceability
 
-The project follows several security principles:
+Git branches and Pull Requests were used progressively throughout the project.
+
+The implementation was separated into logical stages such as:
 
 ```text
-No committed Cloud client secret
-OIDC authentication for GitHub -> Azure
-Least-privilege Azure RBAC
-SSH access restricted by CIDR
-Kubernetes Secrets for credentials
-No committed PostgreSQL password
-No committed Gmail application password
-No committed Grafana administrator password
-Trivy HIGH/CRITICAL container gate
-CodeQL SAST
-SonarQube analysis
-OWASP ZAP DAST
-CSRF protection
-CSP and security headers
-Internal-only monitoring services
-Immutable deployment traceability using Git SHA
+CI
+Docker
+Container registry
+Terraform / Azure
+Kubernetes
+Continuous Deployment
+DAST
+Monitoring
+Alerting
+Hardening and fixes
 ```
+
+This approach provides a Git history showing the progressive implementation and correction of the platform.
 
 ---
 
-# Operational Checks
+# Main Validation Points
 
-Application Pods:
+The project has demonstrated the following technical capabilities:
 
-```bash
-sudo k3s kubectl get pods -n petclinic
-```
-
-Services:
-
-```bash
-sudo k3s kubectl get svc -n petclinic
-```
-
-Ingress:
-
-```bash
-sudo k3s kubectl get ingress -n petclinic
-```
-
-Persistent storage:
-
-```bash
-sudo k3s kubectl get pvc -n petclinic
-```
-
-Monitoring Pods:
-
-```bash
-sudo k3s kubectl get pods -n monitoring
-```
-
-ServiceMonitor:
-
-```bash
-sudo k3s kubectl get servicemonitor -A
-```
-
-Prometheus rules:
-
-```bash
-sudo k3s kubectl get prometheusrule -n petclinic
-```
-
-Alertmanager configuration:
-
-```bash
-sudo k3s kubectl get alertmanagerconfig -n petclinic
-```
-
----
-
-# Useful Local Validation Commands
-
-Maven:
-
-```bash
-./mvnw -B verify
-```
-
-Shell scripts:
-
-```bash
-bash -n scripts/*.sh
-```
-
-Terraform formatting:
-
-```bash
-terraform -chdir=infra/terraform fmt -check
-```
-
-Terraform validation:
-
-```bash
-terraform -chdir=infra/terraform validate
-```
-
-Ansible syntax:
-
-```bash
-ansible-playbook \
-  -i infra/ansible/inventory.ini \
-  infra/ansible/site.yml \
-  --syntax-check
-```
+| Area | Validation |
+|---|---|
+| Application build | Maven build and automated tests |
+| Test quality | JaCoCo coverage threshold |
+| Code quality | SonarQube Cloud |
+| Static security | CodeQL |
+| Containerization | Docker multi-stage build |
+| Container security | Trivy |
+| Registry | GitHub Container Registry |
+| Infrastructure | Terraform on Microsoft Azure |
+| Configuration | Ansible |
+| Kubernetes | K3s |
+| Application | Two PetClinic replicas |
+| Database | PostgreSQL with persistent storage |
+| Networking | Traefik Ingress |
+| CD security | Azure OIDC and RBAC |
+| Deployment | Kubernetes rollout validation |
+| Dynamic security | OWASP ZAP |
+| Metrics | Actuator and Micrometer |
+| Monitoring | Prometheus |
+| Visualization | Grafana |
+| Alerting | Alertmanager |
+| Notification | Gmail FIRING / RESOLVED validation |
 
 ---
 
 # Known Limitations
 
-This project intentionally remains a student engineering environment rather than a full production platform.
+This project is an engineering and learning environment rather than a production-grade highly available platform.
 
 Current limitations include:
 
-```text
-K3s is single-node.
-Two PetClinic replicas do not provide cluster-level high availability.
+- the K3s cluster uses a single node;
+- two PetClinic replicas do not provide node-level high availability;
+- the public application endpoint currently uses HTTP rather than HTTPS/TLS;
+- disaster-recovery and database-restore procedures are not implemented as a complete production workflow;
+- Terraform state is currently managed locally rather than through a shared remote backend;
+- DAST baseline analysis is not used as proof of zero vulnerabilities.
 
-The public application currently uses HTTP.
-HTTPS/TLS is a future improvement.
-
-Terraform currently uses local state.
-A remote backend would improve collaboration and state protection.
-
-The OWASP ZAP baseline is currently non-blocking.
-
-PostgreSQL uses K3s local-path storage.
-A production platform would normally use more resilient storage.
-
-A complete database disaster-recovery / restore procedure has not been validated.
-
-Prometheus, Grafana and Alertmanager remain internal ClusterIP services.
-```
+These limitations identify clear opportunities for future improvement.
 
 ---
 
 # Possible Future Improvements
 
-Possible next steps include:
+Potential extensions include:
+
+- HTTPS/TLS termination;
+- multi-node Kubernetes architecture;
+- remote Terraform state backend;
+- GitOps-based deployment;
+- stronger disaster-recovery procedures;
+- automated database restore tests;
+- progressive strengthening of DAST security gates.
+
+---
+
+# Local Application Validation
+
+The application can be built with:
+
+```bash
+./mvnw -B verify
+```
+
+For local development:
+
+```bash
+./mvnw spring-boot:run
+```
+
+The local application is normally accessible at:
 
 ```text
-HTTPS/TLS with automated certificate management
-Multi-node Kubernetes/K3s architecture
-Remote Terraform backend
-GitOps deployment with Argo CD or Flux
-More resilient persistent storage
-Automated database backup and restore validation
-Progressively stricter DAST blocking policies
-Extended observability and SLOs
-Centralized log aggregation
+http://localhost:8080
 ```
 
 ---
 
-# Important Notes
+# Docker Build
 
-The presence of successful CI, CD or DAST workflows must not be interpreted as a guarantee that the application contains zero defects or zero security findings.
+Build the project container image locally with:
 
-The project demonstrates an automated engineering process in which quality, security, deployment and observability controls are integrated throughout the software delivery lifecycle.
-
-Monitoring and alerting checks complement the deployment validation by verifying that the application remains observable after delivery.
-
----
-
-# Upstream Project
-
-The business application is derived from the official Spring PetClinic project:
-
-https://github.com/spring-projects/spring-petclinic
-
-Spring PetClinic is used here as the application workload around which the DevSecOps platform was designed and implemented.
-
----
-
-# Author
-
-**Raghad Khedhiri**
-
-Software Architecture Engineering  
-ESPRIT
-
-Project repository:
-
-https://github.com/raghadkhedhiri/spring-petclinic-devops
-
----
-
-# License
-
-The original Spring PetClinic project is distributed under the Apache License 2.0.
-
-This repository preserves the upstream license:
-
-```text
-LICENSE.txt
+```bash
+docker build -t petclinic-app:local .
 ```
 
-See:
+This only builds a local image and does not deploy anything to Azure.
 
-https://www.apache.org/licenses/LICENSE-2.0
+---
+
+# Terraform Validation
+
+The Terraform configuration can be checked without applying infrastructure changes:
+
+```bash
+terraform -chdir=infra/terraform fmt -check
+terraform -chdir=infra/terraform validate
+```
+
+`terraform apply` is intentionally not presented as a routine validation command because it can modify Cloud infrastructure.
+
+---
+
+# Kubernetes Manifests
+
+Application manifests are located under:
+
+```text
+k8s/base/
+```
+
+Monitoring resources are located under:
+
+```text
+k8s/monitoring/
+```
+
+They describe the desired Kubernetes configuration of the project.
+
+---
+
+# Secrets
+
+No real passwords, Azure credentials, Gmail application passwords or database passwords should be committed to this repository.
+
+Sensitive values are handled through mechanisms such as:
+
+- GitHub Actions Secrets;
+- GitHub repository variables;
+- local ignored configuration;
+- Kubernetes Secrets.
+
+---
+
+# Project Context
+
+This repository contains the technical work carried out around Spring PetClinic as part of an engineering internship project at ESPRIT.
+
+The focus of the work is DevSecOps, Cloud infrastructure, deployment automation, Kubernetes and observability.
+
+The original Spring PetClinic application provides the application workload on top of which the DevSecOps platform was designed.
+
+---
+
+# License and Upstream Project
+
+Spring PetClinic is an open-source project distributed under the Apache License 2.0.
+
+Original upstream project:
+
+`spring-projects/spring-petclinic`
+
+This repository focuses on the DevSecOps and Cloud engineering work performed around that application.
